@@ -1,90 +1,92 @@
-const fs = require("fs");
-
-const tours = JSON.parse(
-  fs.readFileSync(`${__dirname}/../natours/dev-data/data/tours-simple.json`)
-);
-
-//Param Middleware for checking tour ID
-exports.checkID = (req, res, next, val) => {
-  console.log(`Your tour ID is ${val}`);
-  if (req.params.id * 1 > tours.length) {
-    return res.status(404).json({
-      status: "fail",
-      message: "Tour not found",
-    });
-  }
-  next();
-};
-
-//Checking if the post contains the name and price
-exports.checkBody = (req, res, next) => {
-  if (!req.body.name || !req.body.price) {
-    return res.status(400).json({
-      status: "fail",
-      message: "Please provide name and price",
-    });
-  }
-  next();
-};
+const Tour = require("./../models/tourModel");
 
 // 2)ROUTE HANDLERS
-exports.getAllTours = (req, res) => {
-  res.status(200).json({
-    status: "success",
-    requestedAt: req.requestedTime,
-    results: tours.length,
-    data: {
-      tours,
-    },
-  });
+exports.getAllTours = async (req, res) => {
+  try {
+    const tours = await Tour.find();
+    res.status(200).json({
+      status: "success",
+      requestedAt: req.requestedTime,
+      results: tours.length,
+      data: {
+        tours,
+      },
+    });
+  } catch (err) {
+    res.status(404).json({
+      status: "fail",
+      message: err.message,
+    });
+  }
 };
 
-exports.getTour = (req, res) => {
-  const id = req.params.id * 1;
-  const tour = tours.find((i) => i.id === id);
-
-  res.status(200).json({
-    status: "success",
-    data: {
-      tour,
-    },
-  });
+exports.getTour = async (req, res) => {
+  console.log(req.params.id);
+  try {
+    const tour = await Tour.findById(req.params.id);
+    res.status(200).json({
+      status: "success",
+      data: {
+        tour,
+      },
+    });
+  } catch (err) {
+    res.status(404).json({
+      status: "fail",
+      message: err.message,
+    });
+  }
 };
 
-exports.createTour = (req, res) => {
-  //   handling ID for new tour
-  const newId = tours[tours.length - 1].id + 1;
-  const newTour = Object.assign({ id: newId }, req.body);
-  tours.push(newTour);
-  //Merging the tours with the new tour
-  fs.writeFile(
-    `${__dirname}/natours/dev-data/data/tours-simple.json`,
-    JSON.stringify(tours),
-    (err) => {
-      res.status(201).json({
-        status: "success",
-
-        data: {
-          tour: newTour,
-        },
-      });
-    }
-  );
+exports.createTour = async (req, res) => {
+  try {
+    const newTour = await Tour.create(req.body);
+    res.status(201).json({
+      status: "success",
+      data: {
+        tour: newTour,
+      },
+    });
+  } catch (err) {
+    res.status(400).json({
+      status: "fail",
+      message: "Invalid Data Sent!",
+    });
+  }
 };
 
-exports.updateTour = (req, res) => {
-  res.status(200).json({
-    status: "success",
-    data: {
-      tour: "<New updated Tour>",
-    },
-  });
+exports.updateTour = async (req, res) => {
+  try {
+    const tour = await Tour.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+    res.status(200).json({
+      status: "success",
+      data: {
+        tour,
+      },
+    });
+  } catch (err) {
+    res.status(404).json({
+      status: "fail",
+      message: "Invalid Data Sent!",
+    });
+  }
 };
 
-exports.deleteTour = (req, res) => {
-  res.status(204).json({
-    status: "success",
-    data: null,
-  });
+exports.deleteTour = async (req, res) => {
+  try {
+    await Tour.findByIdAndDelete(req.params.id);
+    res.status(204).json({
+      status: "success",
+      data: null,
+    });
+  } catch (err) {
+    res.status(404).json({
+      status: "fail",
+      message: "Invalid Data Sent!",
+    });
+  }
 };
 //////End of Handlers
